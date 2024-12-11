@@ -1,88 +1,98 @@
 spring:
   cloud:
     gateway:
-      discovery:
-        locator:
-          enabled: true
-          lower-case-service-id: true
-      routes:
-        - id: payment-service
-          uri: lb://payment-service
-          predicates:
-            - Path=/payments/**,/payments
-            - Method=GET,POST,PUT,DELETE,PATCH
-          filters:
-            - PrefixPath=/api/v1
-            - AddResponseHeader=X-Powered-By,User Service
+      default-filters:
+        - RemoveRequestHeader=Authorization
+      mvc:
+        discovery:
+          locator:
+            enabled: true
+            lower-case-service-id: true
+        routes:
+          - id: payment-service
+            uri: lb://payment-service
+            predicates:
+              - Path=/payments/**,/payments
+              - Method=GET,POST,PUT,DELETE,PATCH
+            filters:
+              - PrefixPath=/api/v1
+              - AddResponseHeader=X-Powered-By,User Service
 
-        - id: notification-service
-          uri: lb://notification-service
-          predicates:
-            - Path=/notifications/**,/notifications
-            - Method=GET,POST,PUT,DELETE,PATCH
-          filters:
-            - PrefixPath=/api/v1
-            - AddResponseHeader=X-Powered-By,Notification Service
+          - id: notification-service
+            uri: lb://notification-service
+            predicates:
+              - Path=/notifications/**,/notifications
+              - Method=GET,POST,PUT,DELETE,PATCH
+            filters:
+              - PrefixPath=/api/v1
+              - AddResponseHeader=X-Powered-By,Notification Service
 
-        - id: recommendation-service
-          uri: lb://recommendation-service
-          predicates:
-            - Path=/recommendations/**,/recommendations
-            - Method=GET,POST,PUT,DELETE,PATCH
-          filters:
-            - PrefixPath=/api/v1
-            - AddResponseHeader=X-Powered-By,Recommendation Service
+          - id: recommendation-service
+            uri: lb://recommendation-service
+            predicates:
+              - Path=/recommendations/**,/recommendations
+              - Method=GET,POST,PUT,DELETE,PATCH
+            filters:
+              - PrefixPath=/api/v1
+              - AddResponseHeader=X-Powered-By,Recommendation Service
 
-        - id: search-service
-          uri: lb://search-service
-          predicates:
-            - Path=/searches/**,/searches
-            - Method=GET,POST,PUT,DELETE,PATCH
-          filters:
-            - PrefixPath=/api/v1
-            - AddResponseHeader=X-Powered-By,Search Service
+          - id: search-service
+            uri: lb://search-service
+            predicates:
+              - Path=/searches/**,/searches
+              - Method=GET,POST,PUT,DELETE,PATCH
+            filters:
+              - PrefixPath=/api/v1
+              - AddResponseHeader=X-Powered-By,Search Service
 
-        - id: booking-service
-          uri: lb://booking-service
-          predicates:
-            - Path=/bookings/**,/bookings
-            - Method=GET,POST,PUT,DELETE,PATCH
-          filters:
-            - PrefixPath=/api/v1
-            - AddResponseHeader=X-Powered-By,Booking Service
+          - id: booking-service
+            uri: lb://booking-service
+            predicates:
+              - Path=/bookings/**,/bookings
+              - Method=GET,POST,PUT,DELETE,PATCH
+            filters:
+              - PrefixPath=/api/v1
+              - AddResponseHeader=X-Powered-By,Booking Service
 
-        - id: showtime-service
-          uri: lb://showtime-service
-          predicates:
-            - Path=/showtimes/**, /showtimes
-            - Method=GET,POST,PUT,DELETE,PATCH
-          filters:
-            - PrefixPath=/api/v1
-            - AddResponseHeader=X-Powered-By,Showtime Service
+          - id: showtime-service
+            uri: lb://showtime-service
+            predicates:
+              - Path=/showtimes/**,/showtimes,/cinemas/**,/cinemas,/rooms/**,/rooms
+              - Method=GET,POST,PUT,DELETE,PATCH
+            filters:
+              - PrefixPath=/api/v1
+              - AddResponseHeader=X-Powered-By,Showtime Service
 
-        - id: auth-service
-          uri: lb://auth-service
-          predicates:
-            - Path=/auth/**
-            - Method=GET,POST,PUT,DELETE,PATCH
-          filters:
-            - PrefixPath=/api/v1
-            - AddResponseHeader=X-Powered-By,Auth Service
+          - id: auth-service
+            uri: lb://auth-service
+            predicates:
+              - Path=/auth/**
+              - Method=GET,POST,PUT,DELETE,PATCH
+            filters:
+              - PrefixPath=/api/v1
+              - AddResponseHeader=X-Powered-By,Auth Service
 
-        - id: movie-service
-          uri: lb://movie-service
-          predicates:
-            - Path=/movies/**
-            - Method=GET,POST,PUT,DELETE,PATCH
-          filters:
-            - PrefixPath=/api/v1
-            - AddResponseHeader=X-Powered-By,Movie Service
+          - id: movie-service
+            uri: lb://movie-service
+            predicates:
+              - Path=/movies/**,/movies
+              - Method=GET,POST,PUT,DELETE,PATCH
+            filters:
+              - PrefixPath=/api/v1
+              - AddResponseHeader=X-Powered-By,Movie Service
   application:
     name: api-gateway
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
 
 server:
   port: 8080
+
 eureka:
-  client:
-    service-url:
-      defaultZone: http://localhost:8761/eureka/
+    client:
+      service-url:
+        defaultZone: http://localhost:8761/eureka
+        preferIpAddress: true
