@@ -2,60 +2,76 @@ package com.foolish.apigateway.filters;
 
 import com.foolish.apigateway.services.AuthenticationService;
 import com.foolish.apigateway.services.RedisService;
-import jakarta.servlet.*;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import lombok.AllArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import net.devh.boot.grpc.examples.lib.AuthenticateResponse;
-import org.checkerframework.checker.units.qual.A;
-import org.springframework.cglib.core.internal.Function;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.web.filter.OncePerRequestFilter;
-import org.springframework.web.servlet.function.ServerRequest;
+import org.springframework.cloud.gateway.filter.GatewayFilterChain;
+import org.springframework.cloud.gateway.filter.GlobalFilter;
+import org.springframework.core.Ordered;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.stereotype.Component;
+import org.springframework.web.server.ServerWebExchange;
+import reactor.core.publisher.Mono;
 
-import java.io.IOException;
+import java.util.concurrent.ExecutionException;
 
-@Slf4j
-@Configuration
-@AllArgsConstructor
-public class AuthenticationFilter extends OncePerRequestFilter {
+/*Không thực hiện cấu hình ở đây. Bởi vì khi filter này implement lại GlobalFilter thì sẽ được tự động thêm vào Filter chains*/
+@Component
+public class AuthenticationFilter implements GlobalFilter, Ordered {
+  private final AuthenticationService authenticationService;
   private final RedisService redisService;
-  private final AuthenticationService authService;
+
+  public AuthenticationFilter(AuthenticationService authenticationService, RedisService redisService) {
+    this.authenticationService = authenticationService;
+    this.redisService = redisService;
+  }
 
   @Override
-  protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
-    log.info("ENTERING AUTHENTICATION FILTER");
-    // request tồn tại Authorization header.
-    String token = this.getAuthorizationToken(request);
-    // Kiểm tra token có trong redis không
-    Integer value = redisService.get(token);
-    if (value != null) attachUserIdToRequest(value.toString());
-    else {
-      // Token không tồn tại trong redis, gửi request đến service authenticate
-      AuthenticateResponse aResponse = authService.doAuthenticate(token);
-      if (!aResponse.getIsValid()) {
-        throw new ServletException("Invalid token");
+  public int getOrder() {
+    return -1;
+  }
+
+  @Override
+  public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+    System.out.println("AuthenticationFilter");
+    String authorization = exchange.getRequest().getHeaders().getFirst("Authorization");
+    if (authorization != null) {
+      String token = authorization.substring(7);
+      // Tìm token trong Redis
+      String value = null;
+      try {
+        value = redisService.get(token);
+      } catch (Exception e) {
+        throw new RuntimeException(e);
       }
-      String userId = aResponse.getUserId();
-      long ttl = aResponse.getTtl();
-      redisService.saveWithTtl(token, userId, ttl);
-      attachUserIdToRequest(userId);
+      if (value != null && !value.isEmpty()) {
+        ServerHttpRequest request = exchange.getRequest()
+                .mutate()
+                .header("X-USER-ID", value)
+                .build();
+        ServerWebExchange updated = exchange.mutate().request(request).build();
+        return chain.filter(updated);
+      } else {
+        AuthenticateResponse response = null;
+        try {
+          response = authenticationService.doAuthenticate(token);
+        } catch (Exception e) {
+          throw new RuntimeException(e);
+        }
+        if (!response.getIsValid()) {
+          exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
+          return exchange.getResponse().setComplete();
+        }
+        String user_id = response.getUserId();
+        long ttl = response.getTtl();
+        redisService.set(token, user_id, ttl);
+        ServerHttpRequest request = exchange.getRequest()
+                .mutate()
+                .header("X-USER-ID", user_id)
+                .build();
+        ServerWebExchange updated = exchange.mutate().request(request).build();
+        return chain.filter(updated);
+      }
     }
-    filterChain.doFilter(request, response);
-  }
-
-  private String getAuthorizationToken(ServletRequest request) {
-    String authorization = ((HttpServletRequest) request).getHeader("Authorization");
-    return authorization.substring(7);
-  }
-
-  public static Function<ServerRequest, ServerRequest> attachUserIdToRequest(String userId) {
-    return request -> ServerRequest.from(request).header("X-USER-ID", userId).build();
-  }
-
-  @Override
-  protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
-    return request.getHeader("Authorization") == null;
+    return chain.filter(exchange);
   }
 }

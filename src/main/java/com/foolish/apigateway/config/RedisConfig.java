@@ -2,29 +2,22 @@ package com.foolish.apigateway.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.data.redis.connection.RedisConnectionFactory;
-import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
-import org.springframework.data.redis.connection.jedis.JedisConnectionFactory;
-import org.springframework.data.redis.core.RedisTemplate;
-import redis.clients.jedis.JedisPooled;
+import org.springframework.data.redis.connection.ReactiveRedisConnectionFactory;
+import org.springframework.data.redis.core.ReactiveRedisOperations;
+import org.springframework.data.redis.core.ReactiveRedisTemplate;
+import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer;
+import org.springframework.data.redis.serializer.RedisSerializationContext;
+import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 @Configuration
 public class RedisConfig {
   @Bean
-  public JedisConnectionFactory redisConnectionFactory() {
-    RedisStandaloneConfiguration config = new RedisStandaloneConfiguration("localhost", 6379);
-    return new JedisConnectionFactory(config);
+  ReactiveRedisOperations<String, String> redisOperations(ReactiveRedisConnectionFactory factory) {
+    Jackson2JsonRedisSerializer<String> serializer = new Jackson2JsonRedisSerializer<>(String.class);
+    RedisSerializationContext.RedisSerializationContextBuilder<String, String> builder =
+            RedisSerializationContext.newSerializationContext(new StringRedisSerializer());
+    RedisSerializationContext<String, String> context = builder.value(serializer).build();
+    return new ReactiveRedisTemplate<>(factory, context);
   }
 
-  @Bean
-  public JedisPooled jedisPooled() {
-    return new JedisPooled("localhost", 6379);
-  }
-
-  @Bean
-  public RedisTemplate<String, Integer> redisTemplate(RedisConnectionFactory connectionFactory) {
-    RedisTemplate<String, Integer> redisTemplate = new RedisTemplate<>();
-    redisTemplate.setConnectionFactory(connectionFactory);
-    return redisTemplate;
-  }
 }

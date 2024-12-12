@@ -1,26 +1,23 @@
 package com.foolish.apigateway.services;
 
-import ch.qos.logback.core.util.Duration;
 import lombok.AllArgsConstructor;
-import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ReactiveRedisOperations;
 import org.springframework.stereotype.Service;
-import redis.clients.jedis.JedisPooled;
+import reactor.core.publisher.Mono;
 
-import java.util.Objects;
+import java.time.Duration;
+import java.util.concurrent.ExecutionException;
 
 @Service
 @AllArgsConstructor
 public class RedisService {
-  private final JedisPooled jedisPooled;
+  private final ReactiveRedisOperations<String, String> redisOperations;
 
-  public void saveWithTtl(String token, String userId, long ttl) {
-    System.out.println("Executing saveWithTtl");
-    jedisPooled.set(token, userId);
-    jedisPooled.expire(token, ttl);
+  public String get(String key) throws ExecutionException, InterruptedException {
+    return redisOperations.opsForValue().get(key).toFuture().get();
   }
 
-  public Integer get(String key) {
-    System.out.println("Executing get");
-    return Integer.parseInt(Objects.requireNonNull(jedisPooled.get(key)));
+  public Mono<Boolean> set(String key, String value, long ttl) {
+     return redisOperations.opsForValue().set(key, value, Duration.ofSeconds(ttl));
   }
 }
