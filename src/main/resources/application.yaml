@@ -58,6 +58,15 @@ spring:
             - PrefixPath=/api/v1
             - AddResponseHeader=X-Powered-By,Showtime Service
 
+        - id: movie-service
+          uri: lb://movie-service
+          predicates:
+            - Path=/movies/**,/movies
+            - Method=GET,POST,PUT,DELETE,PATCH
+          filters:
+            - PrefixPath=/api/v1
+            - AddResponseHeader=X-Powered-By,Movie Service
+
         - id: auth-service
           uri: lb://auth-service
           predicates:
@@ -67,14 +76,6 @@ spring:
             - PrefixPath=/api/v1
             - AddResponseHeader=X-Powered-By,Auth Service
 
-        - id: movie-service
-          uri: lb://movie-service
-          predicates:
-            - Path=/movies/**,/movies
-            - Method=GET,POST,PUT,DELETE,PATCH
-          filters:
-            - PrefixPath=/api/v1
-            - AddResponseHeader=X-Powered-By,Movie Service
   application:
     name: api-gateway
   data:

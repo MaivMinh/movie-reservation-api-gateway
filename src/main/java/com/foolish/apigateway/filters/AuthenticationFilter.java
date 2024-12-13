@@ -12,9 +12,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
-import java.util.concurrent.ExecutionException;
-
-/*Không thực hiện cấu hình ở đây. Bởi vì khi filter này implement lại GlobalFilter thì sẽ được tự động thêm vào Filter chains*/
 @Component
 public class AuthenticationFilter implements GlobalFilter, Ordered {
   private final AuthenticationService authenticationService;
